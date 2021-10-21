@@ -98,9 +98,9 @@ class Scanner:
             for policy in csp:
                 if r.match(policy):
                     self.vuln(f"Potential vulnerability found: {policy}")
-                    self.vuln(f"Potential working payload: {exploit[0]}")
-                    return True
-        return False
+                    self.vuln(f"Potential working payload: {exploit[0]}\n")
+                    return
+        self.fail("No exploit found\n")
         
 class Page:
     def __init__(self, url):
@@ -134,9 +134,19 @@ def parse_args():
 if __name__ == '__main__':
     #args = parse_args()
     #scan = Scanner(target=args.target, no_colors=args.no_colors, dynamic=args.dynamic)
-    scan = Scanner("http://localhost/1/", all_pages=True)
+    scan = Scanner("http://localhost/2/", all_pages=True)
+
+    scan.info(f"Starting scan on target {scan.target}\n")
 
     if scan.all_pages:
         scan.info("Detecting all pages...")
         scan.get_all_pages(scan.target)
-        scan.info(f"{len(scan.pages)} pages found")
+        scan.info(f"{len(scan.pages)} pages found\n")
+
+    for p in scan.pages:
+        page = Page(p)
+        scan.info(f"Scanning page {page.url}")
+        if page.csp != []:
+            scan.scan(page.csp)
+        else:    
+            scan.fail(f"No CSP on page {page.url}")
