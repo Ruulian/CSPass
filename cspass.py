@@ -8,8 +8,9 @@ import datetime
 import requests
 import re
 from bs4 import BeautifulSoup as bs
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urlparse
 import time
+from requests_html import HTMLSession
 
 def date_formatted():
     return datetime.datetime.now().strftime("%H:%M:%S")
@@ -62,8 +63,8 @@ class Scanner:
         self.print("[<]    Python CSPass @Ruulian_   [>]")
         self.print("[<]==============================[>]")
         self.print()
-        self.sess = requests.session()
-        
+        self.sess = HTMLSession()
+
     def print(self, message=""):
         if self.no_colors:
             message = re.sub("\x1b[\[]([0-9;]+)m", "", message)
@@ -83,14 +84,14 @@ class Scanner:
 
     def get_all_pages(self, page):
         r = self.sess.get(page)
-        soup = bs(r.text, 'html.parser')
-        links = soup.find_all("a", href=True)
+        links = r.html.absolute_links
         for link in links:
-            href = urljoin(self.target, link["href"])
-            if href not in self.pages and urlparse(href).netloc == urlparse(self.target).netloc:
-                self.pages.append(href)
-                self.get_all_pages(href)
+            if link not in self.pages and urlparse(link).netloc == urlparse(self.target).netloc:
+                self.pages.append(link)
+                time.sleep(0.3)
+                self.get_all_pages(link)
                 return
+        
 
     def scan(self, csp):
         for vuln, exploit in self.__class__.exploits.items():
@@ -114,6 +115,9 @@ class Page:
             return headers['Content-Security-Policy'].split("; ")
         else:
             return []
+
+    def exploit(self):
+        sess = HTMLSession()
         
 
 def parse_args():
@@ -133,20 +137,22 @@ def parse_args():
 
 if __name__ == '__main__':
     #args = parse_args()
-    #scan = Scanner(target=args.target, no_colors=args.no_colors, dynamic=args.dynamic)
-    scan = Scanner("http://localhost/2/", all_pages=True)
+    #scan = Scanner(target=args.target, no_colors=args.no_colors, dynamic=args.dynamic, all_pages=args.all_pages)
+    scan = Scanner("http://localhost/", all_pages=True)
 
     scan.info(f"Starting scan on target {scan.target}\n")
-
+    
+    
     if scan.all_pages:
         scan.info("Detecting all pages...")
         scan.get_all_pages(scan.target)
         scan.info(f"{len(scan.pages)} pages found\n")
-
+    
     for p in scan.pages:
         page = Page(p)
         scan.info(f"Scanning page {page.url}")
         if page.csp != []:
             scan.scan(page.csp)
         else:    
-            scan.fail(f"No CSP on page {page.url}")
+            scan.fail(f"No CSP on page {page.url}\n")
+    
