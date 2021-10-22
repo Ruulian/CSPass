@@ -7,7 +7,6 @@ import argparse
 import datetime
 import requests
 import re
-from bs4 import BeautifulSoup as bs
 from urllib.parse import urlparse
 import time
 from requests_html import HTMLSession
