@@ -7,7 +7,7 @@ import argparse
 import datetime
 import requests
 import re
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 import time
 from requests_html import HTMLSession
 
@@ -105,19 +105,42 @@ class Scanner:
 class Page:
     def __init__(self, url):
         self.url = url
+        self.sess = HTMLSession()
         self.csp = self.get_csp()
 
     def get_csp(self):
-        r = requests.get(self.url)
+        r = self.sess.get(self.url)
         headers = r.headers
         if 'Content-Security-Policy' in headers:
             return headers['Content-Security-Policy'].split("; ")
         else:
             return []
 
-    def exploit(self):
-        sess = HTMLSession()
+    def get_forms(self):
+        r = self.sess.get(self.url)
+        forms = r.html.find("form")
+        return forms
+            
+class Form:
+    def __init__(self, action, method, names):
+        self.action = action
+        self.method = method
+        self.names = names
+        self.sess = HTMLSession()
         
+    def test_dom(self):
+        parameters = {}
+        value = "random_value_t0_test"
+        for name in self.names:
+            parameters[name] = value
+        if self.method.lower() == "get":
+            r = self.sess.get(self.action, params=parameters)
+        elif self.method.lower() == "post":
+            r = self.sess.post(self.action, data=parameters)
+        if value in r.text:
+            return True
+        else:
+            return False
 
 def parse_args():
     parser = argparse.ArgumentParser(add_help=True, description='Bypass CSP to perform a XSS')
@@ -137,7 +160,7 @@ def parse_args():
 if __name__ == '__main__':
     #args = parse_args()
     #scan = Scanner(target=args.target, no_colors=args.no_colors, dynamic=args.dynamic, all_pages=args.all_pages)
-    scan = Scanner("http://localhost/", all_pages=True)
+    scan = Scanner("http://localhost/1/", all_pages=True)
 
     scan.info(f"Starting scan on target {scan.target}\n")
     
@@ -150,8 +173,19 @@ if __name__ == '__main__':
     for p in scan.pages:
         page = Page(p)
         scan.info(f"Scanning page {page.url}")
-        if page.csp != []:
-            scan.scan(page.csp)
-        else:    
-            scan.fail(f"No CSP on page {page.url}\n")
-    
+        forms = page.get_forms()
+        for form in forms:
+            action = form.attrs['action']
+            method = form.attrs['method']
+            inputs = form.find("input[type=text]") + form.find("textarea")
+            new_form = Form(urljoin(page.url, action), method, [input.attrs["name"] for input in inputs])
+
+            if new_form.test_dom():
+                scan.info("Parameter reflected in DOM")
+                if page.csp != []:
+                    scan.scan(page.csp)
+                else:
+                    scan.fail(f"No CSP on page {page.url}\n")
+            else:
+                scan.fail("No parameter reflected in DOM")
+            time.sleep(0.3)
