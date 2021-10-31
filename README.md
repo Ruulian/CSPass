@@ -2,7 +2,7 @@
 
 This tool allows to automatically test for Content Security Policy bypass payloads.
 
-![](./.github/)
+![](./.github/example.png)
 
 ## Usage
 
