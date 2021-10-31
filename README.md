@@ -7,8 +7,8 @@ This tool allows to automatically test for Content Security Policy bypass payloa
 ## Usage
 
 ```
-$ ./cspass.py -h
-usage: cspass.py [-h] [--no-colors] [-d] [-a] -t TARGET [-c COOKIE]
+[cspass]$ ./cspass.py -h
+usage: cspass.py [-h] [--no-colors] [-d] [-a] -t TARGET
 
 Bypass CSP to perform a XSS
 
@@ -21,10 +21,6 @@ optional arguments:
 Required argument:
   -t TARGET, --target TARGET
                         Specify the target url
-
-Authentication:
-  -c COOKIE, --cookie COOKIE
-                        Specify cookies
 ```
 
 ## Contributing
