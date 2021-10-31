@@ -12,6 +12,7 @@ from requests_html import HTMLSession
 from selenium import webdriver
 import selenium
 import random
+from selenium.webdriver.firefox.options import Options as FirefoxOptions
 
 general_payload = "document.write(atob('PHAgaWQ9dGVzdGluZ19qc19leHBsb2l0X3BhcmFtPnRlc3Q8L3A+'))"
 
@@ -82,9 +83,9 @@ class Scanner:
         self.target = target
         self.pages = [self.target]
         self.print()
-        self.print("[<]==============================[>]")
-        self.print("[<]    Python CSPass @Ruulian_   [>]")
-        self.print("[<]==============================[>]")
+        self.print("[<]" + "".center(74, "=") + "[>]")
+        self.print("[<]" + "CSPass @Ruulian_".center(74, " ") + "[>]")
+        self.print("[<]" + "".center(74, "=") + "[>]")
         self.print()
         self.sess = HTMLSession()
 
@@ -94,19 +95,19 @@ class Scanner:
         print(message)
 
     def succeed(self, message=""):
-        self.print(f"[\033[92mSUCCEED\033[0m] {message}")
+        self.print(f"[\x1b[92mSUCCEED\x1b[0m] {message}")
 
     def info(self, message=""):
-        self.print(f"[\033[94m{date_formatted()}\033[0m] {message}")
+        self.print(f"[\x1b[94m{date_formatted()}\x1b[0m] {message}")
     
     def vuln(self, message=""):
-        self.print(f"[\033[93mVULN\033[0m] {message}")
+        self.print(f"[\x1b[93mVULN\x1b[0m] {message}")
 
     def fail(self, message=""):
-        self.print(f"[\033[95mFAIL\033[0m] {message}")
+        self.print(f"[\x1b[95mFAIL\x1b[0m] {message}")
 
     def error(self, message=""):
-        self.print(f"[\033[91mERROR\033[0m] {message}")
+        self.print(f"[\x1b[91mERROR\x1b[0m] {message}")
 
     def get_all_pages(self, page):
         r = self.sess.get(page)
@@ -178,7 +179,9 @@ class Form:
             return False
 
     def exploit(self, payload, dangling=False):
-        wb = webdriver.Firefox()
+        options = FirefoxOptions()
+        options.add_argument("--headless")
+        wb = webdriver.Firefox(options=options)
         wb.get(self.url)
         for name in self.names:
             form_input = wb.find_element_by_name(name)
@@ -215,8 +218,6 @@ def parse_args():
     required_args = parser.add_argument_group("Required argument")
     required_args.add_argument("-t", "--target", help="Specify the target url",  required=True)
     
-    auth = parser.add_argument_group('Authentication')
-    auth.add_argument("-c", "--cookie", help="Specify cookies", required=False)
     args = parser.parse_args()
     return args
 
@@ -246,8 +247,8 @@ if __name__ == '__main__':
                     scan.info("Parameter reflected in DOM and no htmlspecialchars detected")
                     if page.csp != []:
                         if page.scan():
-                            scan.vuln(f"Potential vulnerability found {page.vuln}")
-                            scan.vuln(f"Potential payload found {page.payload}\n")
+                            scan.vuln(f"Potential vulnerability found: {page.vuln}")
+                            scan.vuln(f"Potential payload found: {page.payload}\n")
                             if scan.dynamic:
                                 scan.info(f"Starting dynamic mode...")
                                 exploitable = False
