@@ -203,7 +203,7 @@ if __name__ == '__main__':
                 action = form.attrs['action']
                 method = form.attrs['method']
                 inputs = form.find("input[type=text]") + form.find("textarea")
-                new_form = Form(scan.target, urljoin(page.url, action), method, [input.attrs["name"] for input in inputs])
+                new_form = Form(page.url, urljoin(page.url, action), method, [input.attrs["name"] for input in inputs])
 
                 if new_form.test_dom():
                     scan.info("Parameter reflected in DOM")
@@ -213,26 +213,27 @@ if __name__ == '__main__':
                             scan.vuln(f"Potential payload found {page.payload}\n")
                             if scan.dynamic:
                                 scan.info(f"Starting dynamic mode...")
+                                exploitable = False
                                 if new_form.exploit(page.payload):
-                                    scan.succeed(f"Payload found on {page.url}")
-                                    scan.succeed(f"Payload: {page.payload}\n")
-                                    break
+                                    exploitable = True
+                                    payload = page.payload
                                 else:
                                     scan.fail("Potential exploit failed")
                                     scan.info("Trying all payloads")
 
-                                    
                                     for exploits in exploits_dic.values():
-                                        exploitable = False
                                         for exploit in exploits:
                                             if new_form.exploit(exploit):
-                                                scan.succeed(f"Payload found on {page.url}")
-                                                scan.succeed(f"Payload: {exploit}\n")
                                                 exploitable = True
+                                                payload = exploit
                                                 break
                                         if exploitable:
                                             break
-                                    
+                                if exploitable:
+                                    scan.succeed(f"Payload found on {page.url}")
+                                    scan.succeed(f"Payload: {payload}\n")
+                                else:
+                                    scan.fail("No exploit found")
                         else:
                             scan.fail(f"No exploit found\n")
                     else:
