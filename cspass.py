@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 # Author             : @Ruulian_
-# Date created       : None
+# Date created       : 31 Oct 2021
 
 import argparse
 import datetime
@@ -211,7 +211,6 @@ def parse_args():
 if __name__ == '__main__':
     args = parse_args()
     scan = Scanner(target=args.target, no_colors=args.no_colors, dynamic=args.dynamic, all_pages=args.all_pages)
-    #scan = Scanner("http://localhost/1/", all_pages=False, dynamic=True)
 
     scan.info(f"Starting scan on target {scan.target}\n")
     
