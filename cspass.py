@@ -106,7 +106,7 @@ class Scanner:
         self.print(f"[\x1b[92mSUCCEED\x1b[0m] {message}")
 
     def info(self, message=""):
-        self.print(f"[\x1b[94m{date_formatted()}\x1b[0m] {message}")
+        self.print(f"[\x1b[96m{date_formatted()}\x1b[0m] {message}")
     
     def vuln(self, message=""):
         self.print(f"[\x1b[93mVULN\x1b[0m] {message}")
@@ -241,7 +241,7 @@ def parse_args():
 if __name__ == '__main__':
     args = parse_args()
     scan = Scanner(target=args.target, no_colors=args.no_colors, dynamic=args.dynamic, all_pages=args.all_pages)
-    scan.info(f"Starting scan on target {scan.target}\n")
+    scan.info(f"Starting scan on target \x1b[1m{scan.target}\x1b[0m\n")
     
     if scan.all_pages:
         scan.info("Detecting all pages...")
@@ -250,7 +250,7 @@ if __name__ == '__main__':
     
     for p in scan.pages:
         page = Page(p)
-        scan.info(f"Scanning page {page.url}")
+        scan.info(f"Scanning page: \x1b[1m{page.url}\x1b[0m")
         forms = page.get_forms()
         if forms != []:
             for form in forms:
@@ -266,14 +266,14 @@ if __name__ == '__main__':
                             vulns = page.vulns
                             scan.info(f"Number of vulnerabilities found: {len(vulns)}\n")
                             for vuln in vulns:
-                                scan.vuln(f"Vulnerability: {vuln['value']}")
+                                scan.vuln(f"Vulnerability: \x1b[1m{vuln['value']}\x1b[0m")
                                 scan.vuln(f"Payload: {vuln['payload']}\n")
                             if scan.dynamic:
                                 scan.info(f"Starting dynamic mode ...")
                                 for vuln in vulns:
-                                    scan.info(f"Testing: {vuln['value']}")
+                                    scan.info(f"Testing: \x1b[1m{vuln['value']}\x1b[0m")
                                     if new_form.exploit(vuln['payload']):
-                                        scan.succeed(f"Payload found on {page.url}")
+                                        scan.succeed(f"Payload found on \x1b[1m{page.url}\x1b[0m")
                                         scan.succeed(f"Payload: {vuln['payload']}\n")
                                     else:
                                         scan.fail("No working payload found\n")
