@@ -294,3 +294,5 @@ if __name__ == '__main__':
                     scan.fail("No parameter reflected in DOM\n")
         else:
             scan.fail("No form found on this page\n")
+
+scan.info("Scan finished")
