@@ -131,8 +131,7 @@ class Page:
         self.url = url
         self.sess = HTMLSession()
         self.csp = self.get_csp()
-        self.jsonp = []
-        self.vulns = {}
+        self.vulns = []
 
     def get_csp(self):
         data = {}
@@ -160,10 +159,10 @@ class Page:
         vuln = False
         for policyname in self.csp.keys():
             if policyname in vulnerable_CSP_conf.keys():
-                for exploit in vulnerable_CSP_conf[policyname]:                    
+                for exploit in vulnerable_CSP_conf[policyname]:
                     if all(x in self.csp[policyname] for x in exploit['value']):
-                        policyvalue= " ".join(self.csp[policyname])
-                        self.vulns[f"{policyname} {policyvalue}"] = exploit['payload']
+                        policyvalue = " ".join(self.csp[policyname])
+                        self.vulns.append({'value':f"{policyname} {policyvalue}", 'payload':exploit['payload']})
                         vuln = True
         return vuln
                             
@@ -262,18 +261,18 @@ if __name__ == '__main__':
                     scan.info("Parameter reflected in DOM and no htmlspecialchars detected")
                     if page.csp != []:
                         if page.scan():
-                            vulns = page.vulns.items()
+                            vulns = page.vulns
                             scan.info(f"Number of vulnerabilities found: {len(vulns)}\n")
-                            for vuln_policy, vuln_payload in vulns:
-                                scan.vuln(f"Vulnerability: {vuln_policy}")
-                                scan.vuln(f"Payload: {vuln_payload}\n")
+                            for vuln in vulns:
+                                scan.vuln(f"Vulnerability: {vuln['value']}")
+                                scan.vuln(f"Payload: {vuln['payload']}\n")
                             if scan.dynamic:
                                 scan.info(f"Starting dynamic mode ...")
-                                for vuln_policy, vuln_payload in vulns:
-                                    scan.info(f"Testing: {vuln_policy}")
-                                    if new_form.exploit(vuln_payload):
+                                for vuln in vulns:
+                                    scan.info(f"Testing: {vuln['value']}")
+                                    if new_form.exploit(vuln['payload']):
                                         scan.succeed(f"Payload found on {page.url}")
-                                        scan.succeed(f"Payload: {vuln_payload}\n")
+                                        scan.succeed(f"Payload: {vuln['payload']}\n")
                                     else:
                                         scan.fail("No working payload found\n")
                         else:
