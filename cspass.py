@@ -218,6 +218,7 @@ class Form:
             return False
 
     def exploit(self, payload, dangling=False):
+        domain = urlparse(self.url).netloc
         if platform.system() == "Linux" or platform.system() == "Darwin":
             log_path = "/dev/null"
         else:
@@ -225,9 +226,11 @@ class Form:
         options = FirefoxOptions()
         options.add_argument("--headless")
         wb = webdriver.Firefox(options=options, service_log_path=log_path)
-        for key, value in self.cookies:
-            wb.add_cookie({'name':key, 'value':value, 'domain':self.url})
-        wb.get(self.url, cookies=self.cookies)
+        
+        wb.get(self.url)
+        for key, value in self.cookies.items():
+            wb.add_cookie({'name':key, 'value':value, 'domain':domain})
+        
         for name in self.names:
             form_input = wb.find_element_by_name(name)
             form_input.clear()
@@ -238,7 +241,7 @@ class Form:
 
         exploit = False
         if dangling:
-            if urlparse(wb.current_url).netloc != urlparse(self.url).netloc:
+            if urlparse(wb.current_url).netloc != domain:
                 exploit = True
             else:
                 exploit = False
@@ -329,7 +332,7 @@ if __name__ == '__main__':
                                         scan.succeed(f"Payload found on \x1b[1m{page.url}\x1b[0m")
                                         scan.succeed(f"Payload: {vuln['payload']}\n")
                                     else:
-                                        scan.fail("No working payload found\n")
+                                        scan.fail("Payload tested didn't work\n")
                         else:
                             scan.fail(f"No XSS found\n")
                         if scan.dynamic:

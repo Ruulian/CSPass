@@ -15,7 +15,6 @@
             <li><a href="/cspass1/">CSPass 1</a></li>
             <li><a href="/cspass2/">CSPass 2</a></li>
             <li><a href="/cspass3/">CSPass 3</a></li>
-            <li><a href="/cspass4/">CSPass 4</a></li>
         </ul>
     </div>
 </body>

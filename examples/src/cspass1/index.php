@@ -1,4 +1,4 @@
-<?php header("Content-Security-Policy: script-src https://google.com 'unsafe-inline';"); ?>
+<?php header("Content-Security-Policy: script-src 'unsafe-inline';"); ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -11,6 +11,7 @@
 <body>
     <div>
         <form role="search" action="">
+            <h1>Exploit unsafe inline</h1>
             <label for="search">Search for stuff</label>
             <input id="search" type="search" name="q" placeholder="Search..." autofocus required />
             <input type="submit" value="Go">
