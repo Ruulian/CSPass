@@ -14,6 +14,7 @@ import argparse
 import datetime
 import re
 import time
+import platform
 
 general_payload = "alert()"
 
@@ -195,9 +196,13 @@ class Form:
             return False
 
     def exploit(self, payload, dangling=False):
+        if platform.system() == "Linux" or platform.system() == "Darwin":
+            log_path = "/dev/null"
+        else:
+            log_path = "NUL"
         options = FirefoxOptions()
         options.add_argument("--headless")
-        wb = webdriver.Firefox(options=options)
+        wb = webdriver.Firefox(options=options, service_log_path=log_path)
         wb.get(self.url)
         for name in self.names:
             form_input = wb.find_element_by_name(name)
