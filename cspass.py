@@ -85,13 +85,26 @@ vulnerable_CSP_conf = {
 def date_formatted():
     return datetime.datetime.now().strftime("%H:%M:%S")
 
+def parse_cookies(arg:str):
+    cookies = {}
+    cookies_arg = arg.split(";")
+    for c in cookies_arg:
+        cookie = c.split("=")
+        try:
+            cookies[cookie[0]] = cookie[1]
+        except IndexError:
+            raise argparse.ArgumentTypeError("Cookies must be specified with key=value")
+    return cookies
+
+
 class Scanner:
-    def __init__(self, target, no_colors=False, dynamic=False, all_pages=False):
+    def __init__(self, target, no_colors=False, dynamic=False, all_pages=False, cookies={}):
         self.no_colors = no_colors
         self.all_pages = all_pages
         self.dynamic = dynamic
         self.target = target
         self.pages = [self.target]
+        self.cookies = cookies
         self.print()
         self.print("[<]" + "".center(74, "=") + "[>]")
         self.print("[<]" + "CSPass @Ruulian_".center(74, " ") + "[>]")
@@ -121,14 +134,14 @@ class Scanner:
 
     def ping(self):
         try:
-            r = self.sess.get(self.target)
+            r = self.sess.get(self.target, cookies=self.cookies)
             r.raise_for_status()
         except OSError:
             return False
         return True
 
     def get_all_pages(self, page):
-        r = self.sess.get(page)
+        r = self.sess.get(page, cookies=self.cookies)
         if r.text != "":
             links = r.html.absolute_links
             for link in links:
@@ -137,8 +150,9 @@ class Scanner:
                     time.sleep(0.3)
         
 class Page:
-    def __init__(self, url):
+    def __init__(self, url, cookies):
         self.url = url
+        self.cookies=cookies
         self.sess = HTMLSession()
         self.csp = self.get_csp()
         self.vulns = []
@@ -159,7 +173,7 @@ class Page:
         return data
 
     def get_forms(self):
-        r = self.sess.get(self.url)
+        r = self.sess.get(self.url, cookies=self.cookies)
         if r.text != "":
             forms = r.html.find("form")
             return forms
@@ -179,11 +193,12 @@ class Page:
                             
             
 class Form:
-    def __init__(self, url, action, method, names):
+    def __init__(self, url, action, method, names, cookies):
         self.url = url
         self.action = action
         self.method = method
         self.names = names
+        self.cookies=cookies
         self.sess = HTMLSession()
 
     def test_dom(self):
@@ -193,9 +208,9 @@ class Form:
             parameters[name] = value
 
         if self.method.lower() == "get":
-            r = self.sess.get(self.action, params=parameters)
+            r = self.sess.get(self.action, params=parameters, cookies=self.cookies)
         elif self.method.lower() == "post":
-            r = self.sess.post(self.action, data=parameters)
+            r = self.sess.post(self.action, data=parameters, cookies=self.cookies)
 
         if value in r.text:
             return True
@@ -210,7 +225,9 @@ class Form:
         options = FirefoxOptions()
         options.add_argument("--headless")
         wb = webdriver.Firefox(options=options, service_log_path=log_path)
-        wb.get(self.url)
+        for key, value in self.cookies:
+            wb.add_cookie({'name':key, 'value':value, 'domain':self.url})
+        wb.get(self.url, cookies=self.cookies)
         for name in self.names:
             form_input = wb.find_element_by_name(name)
             form_input.clear()
@@ -246,22 +263,24 @@ def parse_args():
     parser.add_argument("-a", "--all-pages", dest="all_pages", action="store_true", help="Looking for vulnerability in all pages could be found", required=False)
 
     required_args = parser.add_argument_group("Required argument")
-    required_args.add_argument("-t", "--target", help="Specify the target url",  required=True)
+    required_args.add_argument("-t", "--target", dest="target", help="Specify the target url", required=True)
+
+    required_args = parser.add_argument_group("Authentication")
+    required_args.add_argument("-c", "--cookies", dest="cookies", help="Specify the cookies (key=value)", type=parse_cookies, required=False)
     
     args = parser.parse_args()
     return args
 
 if __name__ == '__main__':
     args = parse_args()
-    scan = Scanner(target=args.target, no_colors=args.no_colors, dynamic=args.dynamic, all_pages=args.all_pages)
+    scan = Scanner(target=args.target, no_colors=args.no_colors, dynamic=args.dynamic, all_pages=args.all_pages, cookies=args.cookies)
     scan.info(f"Starting scan on target \x1b[1m{scan.target}\x1b[0m\n")
     
-    scan.info("Pinging host")
+    scan.info("Pinging page")
     if scan.ping():
-        host = "reachable"
-        scan.info("Host reachable\n")
+        scan.info("Page found\n")
     else:
-        scan.error("Host unreachable")
+        scan.error("Page not found")
         exit()
 
     if scan.all_pages:
@@ -270,7 +289,7 @@ if __name__ == '__main__':
         scan.info(f"{len(scan.pages)} pages found\n")
     
     for p in scan.pages:
-        page = Page(p)
+        page = Page(p, scan.cookies)
         scan.info(f"Scanning page: \x1b[1m{page.url}\x1b[0m")
         forms = page.get_forms()
         if forms != []:
@@ -291,7 +310,7 @@ if __name__ == '__main__':
                         names.append(input_tag.attrs["name"])
                     except KeyError:
                         pass
-                new_form = Form(page.url, urljoin(page.url, action), method, names)
+                new_form = Form(page.url, urljoin(page.url, action), method, names, scan.cookies)
 
                 if new_form.test_dom():
                     scan.info("Parameter reflected in DOM and no htmlspecialchars detected")
