@@ -4,10 +4,19 @@ This tool allows to automatically test for Content Security Policy bypass payloa
 
 ![](./.github/example.png)
 
+## Installation
+
+You can install CSPass by downloading the zip [here](https://github.com/Ruulian/CSPass/archive/refs/heads/master.zip).
+
+You can also install it by cloning the git repository:
+```
+git clone https://github.com/Ruulian/CSPass.git
+```
+
 ## Usage
 
 ```
-[cspass]$ ./cspass.py -h
+[CSPass]$ ./cspass.py -h
 usage: cspass.py [-h] [--no-colors] [-d] [-a] -t TARGET
 
 Bypass CSP to perform a XSS

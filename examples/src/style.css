@@ -1,0 +1,65 @@
+/*Vars  */
+:root {
+--rad: .7rem;
+--dur: .3s;
+--color-dark: #2f2f2f;
+--color-light: #fff;
+--color-brand: #57bd84;
+--font-fam: 'Lato', sans-serif;
+--height: 5rem;
+--btn-width: 6rem;
+--bez: cubic-bezier(0, 0, 0.43, 1.49);
+}
+
+/* Setup */
+body {
+    text-align: center;
+    background: var(--color-dark); 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    min-height: 100vh 
+}
+html { 
+    box-sizing: border-box; height: 100%; font-size: 10px; 
+} 
+
+/* Main styles */
+form {
+    position: relative;
+    width: 30rem;
+    border-radius: var(--rad);
+}
+input, button {
+    height: var(--height);
+    font-family: var(--font-fam);
+    border: 0;
+    color: var(--color-dark);
+    font-size: 1.8rem;
+}
+/* input[type="search"] {
+    outline: 0; /* <-- shold probably remove this for better accessibility, adding for demo aesthetics for now. 
+    width: 100%;
+    background: var(--color-light);
+    padding: 0 1.6rem;
+    border-radius: var(--rad);
+    appearance: none; /*for iOS input[type="search"] roundedness issue. border-radius alone doesn't work 
+    transition: all var(--dur) var(--bez);
+    transition-property: width, border-radius;
+    z-index: 1;
+    position: relative;
+} */
+label {
+    position: absolute;
+    clip: rect(1px, 1px, 1px, 1px);
+    padding: 0;
+    border: 0;
+    height: 1px;
+    width: 1px;
+    overflow: hidden;
+}
+
+#result{
+    font-size: medium;
+    color: white;
+}

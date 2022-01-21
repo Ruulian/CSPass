@@ -5,16 +5,16 @@
 
 from requests_html import HTMLSession
 from selenium import webdriver
-from selenium.webdriver.firefox.options import Options as FirefoxOptions
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.firefox.options import Options as FirefoxOptions
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
 from urllib.parse import urljoin, urlparse
 import argparse
 import datetime
+import platform
 import re
 import time
-import platform
 
 general_payload = "alert()"
 
@@ -119,6 +119,14 @@ class Scanner:
     def error(self, message=""):
         self.print(f"[\x1b[91mERROR\x1b[0m] {message}")
 
+    def ping(self):
+        try:
+            r = self.sess.get(self.target)
+            r.raise_for_status()
+        except OSError:
+            return False
+        return True
+
     def get_all_pages(self, page):
         r = self.sess.get(page)
         if r.text != "":
@@ -127,8 +135,6 @@ class Scanner:
                 if link not in self.pages and urlparse(link).netloc == urlparse(self.target).netloc:
                     self.pages.append(link)
                     time.sleep(0.3)
-                    self.get_all_pages(link)
-                    return
         
 class Page:
     def __init__(self, url):
@@ -185,6 +191,7 @@ class Form:
         value = "<em>random_value_t0_test</em>"
         for name in self.names:
             parameters[name] = value
+
         if self.method.lower() == "get":
             r = self.sess.get(self.action, params=parameters)
         elif self.method.lower() == "post":
@@ -249,6 +256,14 @@ if __name__ == '__main__':
     scan = Scanner(target=args.target, no_colors=args.no_colors, dynamic=args.dynamic, all_pages=args.all_pages)
     scan.info(f"Starting scan on target \x1b[1m{scan.target}\x1b[0m\n")
     
+    scan.info("Pinging host")
+    if scan.ping():
+        host = "reachable"
+        scan.info("Host reachable\n")
+    else:
+        scan.error("Host unreachable")
+        exit()
+
     if scan.all_pages:
         scan.info("Detecting all pages...")
         scan.get_all_pages(scan.target)
@@ -260,14 +275,27 @@ if __name__ == '__main__':
         forms = page.get_forms()
         if forms != []:
             for form in forms:
-                action = form.attrs['action']
-                method = form.attrs['method']
-                inputs = form.find("input[type=text]") + form.find("textarea")
-                new_form = Form(page.url, urljoin(page.url, action), method, [input.attrs["name"] for input in inputs])
+                if 'action' in form.attrs and form.attrs['action'] != '':
+                    action = form.attrs['action']
+                else:
+                    action = page.url
+                if 'method' in form.attrs:
+                    method = form.attrs['method']
+                else:
+                    method = "GET"
+
+                inputs = form.find("input") + form.find("textarea")
+                names = []
+                for input_tag in inputs:
+                    try:
+                        names.append(input_tag.attrs["name"])
+                    except KeyError:
+                        pass
+                new_form = Form(page.url, urljoin(page.url, action), method, names)
 
                 if new_form.test_dom():
                     scan.info("Parameter reflected in DOM and no htmlspecialchars detected")
-                    if page.csp != []:
+                    if page.csp != {}:
                         if page.scan():
                             vulns = page.vulns
                             scan.info(f"Number of vulnerabilities found: {len(vulns)}\n")
