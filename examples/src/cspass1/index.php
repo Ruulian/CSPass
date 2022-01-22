@@ -16,10 +16,8 @@
             <input id="search" type="search" name="q" placeholder="Search..." autofocus required />
             <input type="submit" value="Go">
             <?php
-                if(isset($_GET["q"]) && isset($_COOKIE["test"])){
-                    if($_COOKIE["test"] == "test"){
-                        echo "<p id=\"result\">Result for '" . $_GET["q"] . "'</p>";
-                    }
+                if(isset($_GET["q"])){
+                    echo "<p id=\"result\">Result for '" . $_GET["q"] . "'</p>";
                 }
             ?>
         </form>

@@ -2,6 +2,8 @@
 
 This tool allows to automatically test for Content Security Policy bypass payloads.
 
+With dynamic mode, CSPass uses selenium to test payload directly on the page and returns if payload worked or not.
+
 ![](./.github/example.png)
 
 ## Installation
@@ -35,6 +37,12 @@ Authentication:
   -c COOKIES, --cookies COOKIES
                         Specify the cookies (key=value)
 ```
+
+## Examples
+
+You can try using CSPass on vulnerable websites by running docker, there are 2 runners: `run_bg.sh` and `run_fg.sh`.
+
+This container gets 3 pages with differents vulnerables CSP where you can handhold the tool.
 
 ## Contributing
 

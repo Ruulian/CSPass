@@ -97,17 +97,6 @@ def parse_cookies(arg:str):
             raise argparse.ArgumentTypeError("Cookies must be specified with key=value")
     return cookies
 
-def banner():
-    print(f"""\x1b[{choice([35, 93, 33])}m
-       ______ _____  ____                    
-      / ____// ___/ / __ \ ____ _ _____ _____
-     / /     \__ \ / /_/ // __ `// ___// ___/
-    / /___  ___/ // ____// /_/ /(__  )(__  ) 
-    \____/ /____//_/     \__,_//____//____/\x1b[0m\x1b[3m by Ruulian\x1b[0m
-
-    \x1b[4mVersion\x1b[0m: 1.2                                                     
-    """)
-
 
 class Scanner:
     def __init__(self, target, no_colors=False, dynamic=False, all_pages=False, cookies={}):
@@ -117,7 +106,6 @@ class Scanner:
         self.target = target
         self.pages = [self.target]
         self.cookies = cookies
-        banner()
         self.sess = HTMLSession()
 
     def print(self, message=""):
@@ -139,6 +127,17 @@ class Scanner:
 
     def error(self, message=""):
         self.print(f"[\x1b[91mERROR\x1b[0m] {message}")
+
+    def banner(self):
+        self.print(f"""\x1b[{choice([35, 93, 33])}m
+        ______ _____  ____                    
+        / ____// ___/ / __ \ ____ _ _____ _____
+        / /     \__ \ / /_/ // __ `// ___// ___/
+        / /___  ___/ // ____// /_/ /(__  )(__  ) 
+        \____/ /____//_/     \__,_//____//____/\x1b[0m\x1b[3m by Ruulian\x1b[0m
+
+        \x1b[4mVersion\x1b[0m: 1.2                                                     
+        """)
 
     def ping(self):
         try:
@@ -206,7 +205,7 @@ class Form:
         self.action = action
         self.method = method
         self.names = names
-        self.cookies=cookies
+        self.cookies = cookies
         self.sess = HTMLSession()
 
     def test_dom(self):
@@ -277,7 +276,7 @@ def parse_args():
     required_args.add_argument("-t", "--target", dest="target", help="Specify the target url", required=True)
 
     required_args = parser.add_argument_group("Authentication")
-    required_args.add_argument("-c", "--cookies", dest="cookies", help="Specify the cookies (key=value)", type=parse_cookies, required=False)
+    required_args.add_argument("-c", "--cookies", dest="cookies", help="Specify the cookies (key=value)", type=parse_cookies, required=False, default={})
     
     args = parser.parse_args()
     return args
@@ -285,6 +284,7 @@ def parse_args():
 if __name__ == '__main__':
     args = parse_args()
     scan = Scanner(target=args.target, no_colors=args.no_colors, dynamic=args.dynamic, all_pages=args.all_pages, cookies=args.cookies)
+    scan.banner()
     scan.info(f"Starting scan on target \x1b[1m{scan.target}\x1b[0m\n")
     
     scan.info("Pinging page")
