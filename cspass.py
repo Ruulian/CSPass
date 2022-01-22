@@ -3,6 +3,7 @@
 # Author             : @Ruulian_
 # Date created       : 31 Oct 2021
 
+from random import choice
 from requests_html import HTMLSession
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
@@ -96,6 +97,17 @@ def parse_cookies(arg:str):
             raise argparse.ArgumentTypeError("Cookies must be specified with key=value")
     return cookies
 
+def banner():
+    print(f"""\x1b[{choice([35, 93, 33])}m
+       ______ _____  ____                    
+      / ____// ___/ / __ \ ____ _ _____ _____
+     / /     \__ \ / /_/ // __ `// ___// ___/
+    / /___  ___/ // ____// /_/ /(__  )(__  ) 
+    \____/ /____//_/     \__,_//____//____/\x1b[0m\x1b[3m by Ruulian\x1b[0m
+
+    \x1b[4mVersion\x1b[0m: 1.2                                                     
+    """)
+
 
 class Scanner:
     def __init__(self, target, no_colors=False, dynamic=False, all_pages=False, cookies={}):
@@ -105,11 +117,7 @@ class Scanner:
         self.target = target
         self.pages = [self.target]
         self.cookies = cookies
-        self.print()
-        self.print("[<]" + "".center(74, "=") + "[>]")
-        self.print("[<]" + "CSPass @Ruulian_".center(74, " ") + "[>]")
-        self.print("[<]" + "".center(74, "=") + "[>]")
-        self.print()
+        banner()
         self.sess = HTMLSession()
 
     def print(self, message=""):
