@@ -1,4 +1,4 @@
-<?php header("Content-Security-Policy: script-src 'unsafe-inline';"); ?>
+<?php header("Content-Security-Policy: script-src 'self' 'unsafe-inline';"); ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
