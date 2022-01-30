@@ -190,10 +190,10 @@ class Page:
         csp = {}
         for policyname in self.csp:
             csp[policyname] = " ".join(self.csp[policyname])
-            csp = json.dumps(
-                csp,
-                indent=4
-            )
+        csp = json.dumps(
+            csp,
+            indent=4
+        )
         return csp
 
     def get_forms(self):
