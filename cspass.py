@@ -17,6 +17,9 @@ import json
 import platform
 import re
 import time
+import urllib3
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 color = choice([35, 93, 33])
 
@@ -106,11 +109,12 @@ def parse_cookies(arg:str):
 
 
 class Scanner:
-    def __init__(self, target, no_colors=False, dynamic=False, all_pages=False, cookies={}):
+    def __init__(self, target, no_colors=False, dynamic=False, all_pages=False, cookies={}, secure=False):
         self.no_colors = no_colors
         self.all_pages = all_pages
         self.dynamic = dynamic
         self.target = target
+        self.secure = secure
         self.pages = [self.target]
         self.cookies = cookies
         self.sess = HTMLSession()
@@ -148,7 +152,7 @@ class Scanner:
 
     def ping(self):
         try:
-            r = self.sess.get(self.target, cookies=self.cookies)
+            r = self.sess.get(self.target, cookies=self.cookies, verify=self.secure)
             r.raise_for_status()
         except OSError:
             return False
@@ -164,16 +168,17 @@ class Scanner:
                     time.sleep(0.3)
         
 class Page:
-    def __init__(self, url, cookies):
+    def __init__(self, url, cookies, secure=False):
         self.url = url
         self.cookies=cookies
+        self.secure = secure
         self.sess = HTMLSession()
         self.csp = self.get_csp()
         self.vulns = []
 
     def get_csp(self):
         data = {}
-        r = self.sess.head(self.url)
+        r = self.sess.head(self.url, verify=self.secure)
         if 'Content-Security-Policy' in r.headers.keys():
             csp = r.headers['Content-Security-Policy']
             for param in csp.strip().strip(';').split(';'):
@@ -237,12 +242,13 @@ class Page:
                             
             
 class Form:
-    def __init__(self, url, action, method, names, cookies):
+    def __init__(self, url, action, method, names, cookies, secure=False):
         self.url = url
         self.action = action
         self.method = method
         self.names = names
         self.cookies = cookies
+        self.secure = secure
         self.sess = HTMLSession()
 
     def test_dom(self):
@@ -252,9 +258,9 @@ class Form:
             parameters[name] = value
 
         if self.method.lower() == "get":
-            r = self.sess.get(self.action, params=parameters, cookies=self.cookies)
+            r = self.sess.get(self.action, params=parameters, cookies=self.cookies, verify=self.secure)
         elif self.method.lower() == "post":
-            r = self.sess.post(self.action, data=parameters, cookies=self.cookies)
+            r = self.sess.post(self.action, data=parameters, cookies=self.cookies, verify=self.secure)
 
         if value in r.text:
             return True
@@ -308,6 +314,7 @@ def parse_args():
     parser.add_argument("--no-colors", dest="no_colors", action="store_true", help="Disable color mode")
     parser.add_argument("-d", "--dynamic", dest="dynamic", action="store_true", help="Use dynamic mode")
     parser.add_argument("-a", "--all-pages", dest="all_pages", action="store_true", help="Looking for vulnerability in all pages could be found", required=False)
+    parser.add_argument("-k", "--secure", dest="secure", action="store_true", help="Check SSL certificate")
 
     required_args = parser.add_argument_group("Required argument")
     required_args.add_argument("-t", "--target", dest="target", help="Specify the target url", required=True)
@@ -320,7 +327,7 @@ def parse_args():
 
 if __name__ == '__main__':
     args = parse_args()
-    scan = Scanner(target=args.target, no_colors=args.no_colors, dynamic=args.dynamic, all_pages=args.all_pages, cookies=args.cookies)
+    scan = Scanner(target=args.target, no_colors=args.no_colors, dynamic=args.dynamic, all_pages=args.all_pages, cookies=args.cookies, secure=args.secure)
     scan.banner()
     scan.info(f"Starting scan on target \x1b[1m{scan.target}\x1b[0m\n")
     
@@ -337,7 +344,7 @@ if __name__ == '__main__':
         scan.info(f"{len(scan.pages)} pages found\n")
     
     for p in scan.pages:
-        page = Page(p, scan.cookies)
+        page = Page(p, scan.cookies, secure=scan.secure)
         scan.info(f"Scanning page: \x1b[1m{page.url}\x1b[0m")
         forms = page.get_forms()
         if forms != []:
@@ -356,7 +363,7 @@ if __name__ == '__main__':
                 for input_tag in inputs:
                     if "name" in input_tag.attrs:
                         names.append(input_tag.attrs["name"])
-                new_form = Form(page.url, urljoin(page.url, action), method, names, scan.cookies)
+                new_form = Form(page.url, urljoin(page.url, action), method, names, scan.cookies, scan.secure)
 
                 if new_form.test_dom():
                     scan.info("Parameter reflected in DOM and no htmlspecialchars detected")
