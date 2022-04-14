@@ -254,8 +254,12 @@ class Form:
     def test_dom(self):
         parameters = {}
         value = "<em>random_value_t0_test</em>"
-        for name in self.names:
-            parameters[name] = value
+        
+        for name, val in self.names.items():
+            if val == "":
+                parameters[name] = value
+            else:
+                parameters[name] = val
 
         if self.method.lower() == "get":
             r = self.sess.get(self.action, params=parameters, cookies=self.cookies, verify=self.secure)
@@ -359,10 +363,19 @@ if __name__ == '__main__':
                     method = "GET"
 
                 inputs = form.find("input") + form.find("textarea")
-                names = []
+                
+                names = {}
                 for input_tag in inputs:
                     if "name" in input_tag.attrs:
-                        names.append(input_tag.attrs["name"])
+                        name = input_tag.attrs["name"]
+                        if "type" in input_tag.attrs and input_tag.attrs["type"] == "hidden":
+                            try:
+                                names[name] = input_tag.attrs["value"]
+                            except:
+                                pass
+                        else:
+                            names[name] = ''
+
                 new_form = Form(page.url, urljoin(page.url, action), method, names, scan.cookies, scan.secure)
 
                 if new_form.test_dom():
@@ -403,7 +416,7 @@ if __name__ == '__main__':
                     else:
                         scan.fail(f"No CSP on page {page.url}\n")
                 else:
-                    scan.fail("No parameter reflected in DOM\n")
+                    scan.fail("No parameter reflected in DOM or htmlspecialchars detected\n")
         else:
             scan.fail("No form found on this page\n")
 
